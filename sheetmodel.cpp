@@ -1,6 +1,9 @@
 #include <QDebug>
 #include <QRegExp>
 #include <QStringList>
+#include <QScriptEngine>
+
+#include "app.h"
 
 #include "sheetmodel.h"
 #include "refsolver.h"
@@ -117,7 +120,7 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
 
     qDebug()<<"Source code:"<<raw_code<<" Precompiled code:"<<code;
 
-    QScriptValue val = js.evaluate(code);
+    QScriptValue val = App::getJs().evaluate(code);
     QVariant result;
 
     if(val.isNumber())

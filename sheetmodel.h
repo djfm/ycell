@@ -2,7 +2,7 @@
 #define SHEETMODEL_H
 
 #include <QAbstractTableModel>
-#include <QtScript/QScriptEngine>
+
 
 #include "sheet.h"
 #include "sheetcell.h"
@@ -36,8 +36,6 @@ signals:
 public slots:
     
 private:
-
-    QScriptEngine js;
 
     Sheet cells;
 

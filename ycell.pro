@@ -24,7 +24,8 @@ SOURCES +=  main.cpp\
     sheetcell.cpp \
     celleditor.cpp \
     refsolver.cpp \
-    sheet.cpp
+    sheet.cpp \
+    app.cpp
 
 HEADERS  += mainwindow.h \
             sheetview.h \
@@ -35,8 +36,10 @@ HEADERS  += mainwindow.h \
     sheetcell.h \
     celleditor.h \
     refsolver.h \
-    sheet.h
+    sheet.h \
+    app.h
 
 FORMS    += mainwindow.ui
 
-OTHER_FILES +=
+OTHER_FILES += \
+    common.js
