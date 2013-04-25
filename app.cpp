@@ -16,6 +16,13 @@ QScriptEngine &App::getJs()
     return getInstance()->js;
 }
 
+SheetModel *App::open(const QString &path)
+{
+    SheetModel *model = new SheetModel();
+    model->readCSV(path.toStdString());
+    return model;
+}
+
 App::App()
 {
     //TODO: make finding the JS lib location (more)generic!

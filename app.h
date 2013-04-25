@@ -2,6 +2,9 @@
 #define APP_H
 
 #include <QtScript/QScriptEngine>
+#include <QString>
+
+#include "sheetmodel.h"
 
 class App
 {
@@ -11,6 +14,8 @@ public:
 
     static App *getInstance();
     static QScriptEngine &getJs();
+
+    SheetModel *open(const QString &path);
 
 private:
     App();

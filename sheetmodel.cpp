@@ -175,10 +175,10 @@ QVariant SheetModel::headerData(int section, Qt::Orientation orientation, int ro
 
 CSV::Row &SheetModel::CSVReader::onRow(CSV::Row &row)
 {
+    ++n_rows;
     for(int i = 0; i < row.size(); ++i)
     {
-        table->getCell(n_rows, i).setValue(row[i].c_str());
+        table->getCell(n_rows, i + 1).setValue(row[i].c_str());
     }
-    ++n_rows;
     return row;
 }
