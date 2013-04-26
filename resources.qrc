@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/js">
+        <file alias="common.js">js/common.js</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file alias="open.png">icons/open.png</file>
+    </qresource>
+</RCC>

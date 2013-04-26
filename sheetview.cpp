@@ -8,6 +8,7 @@
 #include "sheetview.h"
 #include "celleditor.h"
 #include "refsolver.h"
+#include "sheetmodel.h"
 
 SheetView::SheetView(QWidget *parent) :
     QTableView(parent)
@@ -79,7 +80,19 @@ void SheetView::supprEditorText()
 
 void SheetView::keyPressEvent(QKeyEvent *event)
 {
-    if(state == State::EditingFormula)
+    if((event->modifiers() & Qt::ControlModifier)
+            &&(
+                    event->key() == Qt::Key_Right
+                ||  event->key() == Qt::Key_Left
+                ||  event->key() == Qt::Key_Up
+                ||  event->key() == Qt::Key_Down
+              )
+      )
+    {
+        QModelIndex current = selectionModel()->currentIndex();
+        selectionModel()->setCurrentIndex(qobject_cast<SheetModel*>(model())->jumpIndex(current, event->key()), QItemSelectionModel::ClearAndSelect);
+    }
+    else if(state == State::EditingFormula)
     {
         if(event->key() == Qt::Key_Escape || event->key() == Qt::Key_Return)
         {

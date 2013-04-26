@@ -6,7 +6,6 @@
 CellEditor::CellEditor(QWidget *parent) :
     QTextEdit(parent)
 {
-    qDebug()<<"YOPLA";
 }
 
 int CellEditor::getLastCursorPosition() const

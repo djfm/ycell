@@ -25,8 +25,7 @@ SheetModel *App::open(const QString &path)
 
 App::App()
 {
-    //TODO: make finding the JS lib location (more)generic!
-    QFile file("../ycell/common.js");
+    QFile file(":/js/common.js");
     if(file.open(QFile::ReadOnly))
     {
         QString code = file.readAll();

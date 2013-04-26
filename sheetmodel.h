@@ -27,6 +27,8 @@ public:
 
     SheetCell &getCell(int row, int column);
 
+    QModelIndex jumpIndex(const QModelIndex &current, int key);
+
 protected:
 
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;

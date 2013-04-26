@@ -9,11 +9,15 @@
 #include "mainwindow.h"
 #include "csv.h"
 #include "sparsetable.h"
-
+#include "app.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    Q_INIT_RESOURCE(resources);
+
+    App::getInstance();
 
     RefSolver::test();
 

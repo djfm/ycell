@@ -163,6 +163,88 @@ SheetCell &SheetModel::getCell(int row, int column)
     return cells.getCell(row, column);
 }
 
+QModelIndex SheetModel::jumpIndex(const QModelIndex &current, int key)
+{
+    int lateral, vertical;
+    if(key == Qt::Key_Right)
+    {
+        lateral  = 1;
+        vertical = 0;
+    }
+    else if(key == Qt::Key_Left)
+    {
+        lateral  = -1;
+        vertical =  0;
+    }
+    else if(key == Qt::Key_Up)
+    {
+        lateral  =  0;
+        vertical = -1;
+    }
+    else if(key == Qt::Key_Down)
+    {
+        lateral  =  0;
+        vertical =  1;
+    }
+    else
+    {
+        return current;
+    }
+
+    qDebug()<<"Jumping "<<lateral<<vertical;
+
+    bool start_empty = cells.getCell(current.row()+1, current.column()+1).getValue().toString().isEmpty();
+
+    int step_before = 1;
+    int srow    = current.row()    + 1 + vertical;
+    int scolumn = current.column() + 1 + lateral;
+    qDebug()<<"Step before?"<<srow<<scolumn<<(cells.getCell(srow, scolumn).toString().isEmpty());
+    if(!start_empty && srow <= rowCount({}) && srow >= 1 && scolumn <= columnCount({}) && scolumn >= 1
+       && cells.getCell(srow, scolumn).getValue().toString().isEmpty())
+    {
+        qDebug()<<"Step before!";
+        start_empty = true;
+        step_before = 2;
+    }
+
+    int row, column;
+    bool break_outer = false;
+    for(row = current.row() + 1 + vertical * step_before; row <= rowCount({}) && row >= 1; row += vertical)
+    {
+        for(column = current.column() + 1 + lateral * step_before; column <= columnCount({}) && column >= 1; column += lateral)
+        {
+            qDebug()<<"Looking at "<<row<<column;
+            bool empty = cells.getCell(row, column).getValue().toString().isEmpty();
+            //qDebug()<<"Start is"<<(start_empty ? "EMPTY" : "FULL")<<"and I am"<<(empty? "EMPTY" : "FULL");
+            if(start_empty && !empty)
+            {
+                break_outer = true;
+                break;
+            }
+            else if(!start_empty && empty)
+            {
+                row    -= vertical;
+                column -= lateral;
+                break_outer = true;
+                break;
+            }
+
+            if(lateral == 0)break;
+        }
+        if(vertical == 0 || break_outer)break;
+    }
+
+    if(row == 0)++row;
+    else if(row == rowCount({}) + 1)--row;
+    if(column == 0)++column;
+    else if(column == columnCount({}) + 1)--column;
+
+    qDebug()<<"Got"<<row<<column;
+
+    return index(row - 1, column - 1);
+
+}
+
 QVariant SheetModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if(role == Qt::DisplayRole && orientation == Qt::Horizontal)
