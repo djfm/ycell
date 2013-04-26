@@ -43,7 +43,11 @@ void CellEditor::setLastCursorPosition(int pos)
 
 void CellEditor::keyPressEvent(QKeyEvent *e)
 {
-    if(e->key() == Qt::Key_Escape || e->key() == Qt::Key_Return)
+    if(      e->key() == Qt::Key_Return
+          || e->key() == Qt::Key_Left
+          || e->key() == Qt::Key_Right
+          || e->key() == Qt::Key_Up
+          || e->key() == Qt::Key_Down)
     {
         e->ignore();
     }

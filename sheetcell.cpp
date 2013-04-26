@@ -16,7 +16,7 @@ bool SheetCell::Ref::operator ==(const SheetCell::Ref &other) const
 
 SheetCell &SheetCell::setValue(const QVariant &val)
 {
-    qDebug()<<"Setting value for "<<toString()<<":"<<val;
+    //qDebug()<<"Setting value for "<<toString()<<":"<<val;
 
     if(!val.toString().isEmpty() && val.toString().at(0) == '=')
     {

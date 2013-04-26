@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
     setupUi(this);
 
     current_sheet_model = new SheetModel(this);
-    //model->readCSV("/home/fram/Downloads/_1.5.3.1.csv");
+    //current_sheet_model->readCSV("/home/fram/Downloads/_1.5.3.1.csv");
     sheet->setModel(current_sheet_model);
 }
 

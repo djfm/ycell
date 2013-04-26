@@ -126,7 +126,56 @@ void SheetView::keyPressEvent(QKeyEvent *event)
     }
     else
     {
-        QTableView::keyPressEvent(event);
+        if(event->key() == Qt::Key_Return)
+        {
+            QItemSelection selection = selectionModel()->selection();
+            if(selection.count() == 1)
+            {
+                QItemSelectionRange &range                 = selection.back();
+                const QPersistentModelIndex &topLeft       = range.topLeft();
+                const QPersistentModelIndex &bottomRight   = range.bottomRight();
+
+                if(topLeft == bottomRight)
+                {
+                    QModelIndex index = model()->index(topLeft.row(), topLeft.column());
+                    QTableView::setCurrentIndex(index);
+                    QTableView::edit(index);
+                }
+
+                /*ref = RefSolver::Ref(topLeft.row()+1, topLeft.column()+1, bottomRight.row()+1, bottomRight.column()+1);
+                qDebug()<<"Selected"<<ref.toString();*/
+            }
+        }
+        else if(event->key() == Qt::Key_Equal)
+        {
+            QItemSelection selection = selectionModel()->selection();
+            if(selection.count() == 1)
+            {
+                QItemSelectionRange &range                 = selection.back();
+                const QPersistentModelIndex &topLeft       = range.topLeft();
+                const QPersistentModelIndex &bottomRight   = range.bottomRight();
+
+                if(topLeft == bottomRight)
+                {
+                    QModelIndex index = model()->index(topLeft.row(), topLeft.column());
+
+                    QString formula = index.data(Qt::EditRole).toString();
+                    if(!formula.isEmpty() and formula.at(0) == '=')
+                    {
+                        QTableView::setCurrentIndex(index);
+                        QTableView::edit(index);
+                    }
+                    else
+                    {
+                        QTableView::keyPressEvent(event);
+                    }
+                }
+            }
+        }
+        else
+        {
+            QTableView::keyPressEvent(event);
+        }
     }
 }
 
