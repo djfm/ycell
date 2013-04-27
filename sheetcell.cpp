@@ -63,6 +63,11 @@ const QString &SheetCell::getFormula() const
     return formula;
 }
 
+bool SheetCell::isEmpty() const
+{
+    return !hasFormula() && value.toString().isEmpty();
+}
+
 int SheetCell::getRow() const
 {
     return row;
@@ -140,6 +145,40 @@ QString SheetCell::toScriptValue(const QStringList &list)
 QString SheetCell::toString() const
 {
     return RefSolver::Ref(row,column).toString();
+}
+
+void SheetCell::clearFormula()
+{
+    formula.clear();
+}
+
+bool SheetCell::hasRange() const
+{
+    return has_range;
+}
+
+void SheetCell::setHasRange(int rows, int columns)
+{
+    has_range = true;
+    range_rows = rows;
+    range_columns = columns;
+}
+
+void SheetCell::setHasNoRange()
+{
+    has_range = false;
+    range_rows = 0;
+    range_columns = 0;
+}
+
+int SheetCell::getRangeRows() const
+{
+    return range_rows;
+}
+
+int SheetCell::getRangeColumns() const
+{
+    return range_columns;
 }
 
 SheetModel *SheetCell::model()

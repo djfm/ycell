@@ -12,6 +12,7 @@ SheetModel::SheetModel(QObject *parent) :
     QAbstractTableModel(parent),
     cells(this, 56000,256)
 {
+    connect(this, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(on_this_dataChanged(QModelIndex,QModelIndex,QVector<int>)));
 }
 
 int SheetModel::rowCount(const QModelIndex &parent) const
@@ -126,13 +127,72 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
     if(val.isNumber())
     {
         result = val.toNumber();
+        cell.setHasNoRange();
     }
     else if(val.isString())
     {
         result = val.toString();
+        cell.setHasNoRange();
+    }
+    else if(val.isArray())
+    {
+        SparseTable<QString> table;
+        int length = val.property("length").toInteger();
+        for(int i = 0; i < length; ++i)
+        {
+            if(val.property(i).isArray())
+            {
+                int l = val.property(i).property("length").toInteger();
+                for(int j = 0; j < l; ++j)
+                {
+                    table.getCell(i,j) = val.property(i).property(j).toString();
+                }
+            }
+            else
+            {
+                QString v = val.property(i).toString();
+                table.getCell(i,0) = v;
+            }
+        }
+
+        if(cell.hasRange())
+        {
+            for(int i = 0; i < cell.getRangeRows(); ++i)
+            {
+                for(int j = 0; j < cell.getRangeColumns(); ++j)
+                {
+                    erase(index(cell.getRow()-1+i, cell.getColumn()-1+j), EraseValue);
+                }
+            }
+        }
+
+        QModelIndex tl = index(cell.getRow()-1, cell.getColumn()-1);
+        QModelIndex br = index(cell.getRow()-1 + table.rowCount()-1, cell.getColumn()-1 + table.columnCount()-1);
+        if(cells.isEmpty(tl,br,{tl}))
+        {
+            for(int i = 0; i < table.rowCount(); ++i)
+            {
+                for(int j = 0; j < table.columnCount(); ++j)
+                {
+                    int r = cell.getRow() + i;
+                    int c = cell.getColumn() + j;
+                    cells.getCell(r,c).setValue(table.getCell(i,j));
+                }
+            }
+            cell.setHasRange(table.rowCount(), table.columnCount());
+            result = table.getCell(0,0);
+            emit dataChanged(tl, br);
+        }
+        else
+        {
+            cell.setHasNoRange();
+            result = "#NES(" + QString::number(table.rowCount()) + "x" + QString::number(table.columnCount()) + ")";
+        }
+        qDebug()<<"Table:"<<table.rowCount()<<table.columnCount();
     }
     else
     {
+        cell.setHasNoRange();
         result = "#OOPS";
     }
 
@@ -140,15 +200,33 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
     QModelIndex idx = index(cell.getRow(), cell.getColumn());
     emit dataChanged(idx, idx);
 
-
+    /*
     for(const SheetCell::Ref &c : cell.children)
     {
         SheetCell &target = c.model->getCell(c.row, c.column);
         computeCell(target, true, true);
-    }
+    }*/
 
 
     return result;
+}
+
+void SheetModel::on_this_dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
+{
+    qDebug()<<"DataChanged!!";
+    for(int row = topLeft.row(); row <= bottomRight.row(); ++row)
+    {
+        for(int column = topLeft.column(); column <= bottomRight.column(); ++column)
+        {
+            qDebug()<<"DataChanged"<<row<<column;
+            SheetCell &cell = cells.getCell(row+1, column+1);
+            for(const SheetCell::Ref &c : cell.children)
+            {
+                SheetCell &target = c.model->getCell(c.row, c.column);
+                computeCell(target, true, true);
+            }
+        }
+    }
 }
 
 void SheetModel::readCSV(const std::string &path)
@@ -232,6 +310,26 @@ QModelIndex SheetModel::jumpIndex(const QModelIndex &current, Direction dir)
 
     return index(row - 1, column - 1);
 
+}
+
+void SheetModel::erase(const QModelIndex &index, const EraseModes &mode)
+{
+    if(index.isValid())
+    {
+        if(!cells.isEmpty(index))
+        {
+            SheetCell &cell = cells.getCell(index);
+            if(mode & EraseValue)
+            {
+                cell.setValue({});
+            }
+            if(mode & EraseFormula)
+            {
+                cell.clearFormula();
+            }
+            emit dataChanged(index, index);
+        }
+    }
 }
 
 QVariant SheetModel::headerData(int section, Qt::Orientation orientation, int role) const

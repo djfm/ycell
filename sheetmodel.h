@@ -3,6 +3,7 @@
 
 #include <QAbstractTableModel>
 #include <QAbstractItemView>
+#include <QFlags>
 
 
 #include "sheet.h"
@@ -24,6 +25,14 @@ public:
         None
     };
 
+    enum EraseMode
+    {
+        EraseValue   = 0x1,
+        EraseFormula = 0x2,
+        EraseFormat  = 0x4
+    };
+    Q_DECLARE_FLAGS(EraseModes, EraseMode)
+
     explicit SheetModel(QObject *parent = 0);
 
     int rowCount(const QModelIndex &parent) const;
@@ -38,6 +47,11 @@ public:
     SheetCell &getCell(int row, int column);
 
     QModelIndex jumpIndex(const QModelIndex &current, Direction dir);
+
+    void erase(const QModelIndex &index, const EraseModes &mode);
+
+public slots:
+    void on_this_dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles);
 
 protected:
 
@@ -59,5 +73,7 @@ private:
     };
 
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(SheetModel::EraseModes)
 
 #endif // SHEETMODEL_H

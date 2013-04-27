@@ -50,7 +50,7 @@ public:
 
     template <typename T>
     void
-    setCoords(T &cell)
+    setCoords(T &cell, int row, int column)
     {
 
     }

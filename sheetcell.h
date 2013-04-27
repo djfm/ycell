@@ -40,6 +40,7 @@ public:
     DataType getDataType() const;
     bool hasFormula() const;
     const QString& getFormula() const;
+    bool isEmpty() const;
 
     int getRow() const;
     int getColumn() const;
@@ -55,10 +56,22 @@ public:
 
     QString toString() const;
 
+    void clearFormula();
+
+    bool hasRange() const;
+    void setHasRange(int rows, int columns);
+    void setHasNoRange();
+    int getRangeRows() const;
+    int getRangeColumns() const;
+
 private:
 
     int row;
     int column;
+
+    bool has_range = false;
+    int range_rows = 0;
+    int range_columns = 0;
 
 
     DataType data_type = String;

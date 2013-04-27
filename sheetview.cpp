@@ -142,9 +142,6 @@ void SheetView::keyPressEvent(QKeyEvent *event)
                     QTableView::setCurrentIndex(index);
                     QTableView::edit(index);
                 }
-
-                /*ref = RefSolver::Ref(topLeft.row()+1, topLeft.column()+1, bottomRight.row()+1, bottomRight.column()+1);
-                qDebug()<<"Selected"<<ref.toString();*/
             }
         }
         else if(event->key() == Qt::Key_Equal)
@@ -169,6 +166,20 @@ void SheetView::keyPressEvent(QKeyEvent *event)
                     else
                     {
                         QTableView::keyPressEvent(event);
+                    }
+                }
+            }
+        }
+        else if(event->key() == Qt::Key_Delete)
+        {
+            SheetModel *sheet = qobject_cast<SheetModel*>(model());
+            for(const QItemSelectionRange & range : selectionModel()->selection())
+            {
+                for(int row = range.topLeft().row(); row <= range.bottomRight().row(); ++row)
+                {
+                    for(int column = range.topLeft().column(); column <= range.bottomRight().column(); ++column)
+                    {
+                        sheet->erase(sheet->index(row, column), SheetModel::EraseFormula | SheetModel::EraseValue);
                     }
                 }
             }
@@ -218,7 +229,7 @@ QModelIndex SheetView::moveCursor(QAbstractItemView::CursorAction cursorAction, 
 
 QItemSelectionModel::SelectionFlags SheetView::selectionCommand(const QModelIndex &index, const QEvent *event) const
 {
-    if(event->type() == QEvent::KeyPress)
+    if(event != 0 && event->type() == QEvent::KeyPress)
     {
         const QKeyEvent *e = static_cast<const QKeyEvent*>(event);
 

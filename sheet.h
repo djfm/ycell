@@ -3,6 +3,8 @@
 
 #include "sparsetable.h"
 
+#include <QModelIndex>
+
 #include "sheetcell.h"
 
 class SheetModel;
@@ -19,6 +21,11 @@ public:
     void init(SheetCell &c);
 
     bool isEmpty(int row, int column) const;
+    bool isEmpty(const QModelIndex &index) const;
+    bool isEmpty(const QModelIndex &tl, const QModelIndex &br, const QModelIndexList & except_maybe = {}) const;
+
+    using SparseTable<SheetCell>::getCell;
+    SheetCell &getCell(const QModelIndex &index);
 
 private:
     SheetModel *model;
