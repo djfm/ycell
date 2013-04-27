@@ -9,6 +9,8 @@ class SparseTable
     typedef std::map<int, Cell> Row;
     typedef std::map<int, Row> Rows;
 
+
+protected:
     Rows rows;
 
     int row_count;

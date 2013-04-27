@@ -25,6 +25,8 @@ protected:
     void keyPressEvent(QKeyEvent *event);
     bool eventFilter(QObject *object, QEvent *event);
     bool edit(const QModelIndex &index, EditTrigger trigger, QEvent *event);
+    QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
+    QItemSelectionModel::SelectionFlags selectionCommand(const QModelIndex &index, const QEvent *event) const;
 
 private slots:
     void on_delegate_editorCreated(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index);

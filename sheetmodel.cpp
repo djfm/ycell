@@ -163,25 +163,25 @@ SheetCell &SheetModel::getCell(int row, int column)
     return cells.getCell(row, column);
 }
 
-QModelIndex SheetModel::jumpIndex(const QModelIndex &current, int key)
+QModelIndex SheetModel::jumpIndex(const QModelIndex &current, Direction dir)
 {
     int lateral, vertical;
-    if(key == Qt::Key_Right)
+    if(dir == Direction::Right)
     {
         lateral  = 1;
         vertical = 0;
     }
-    else if(key == Qt::Key_Left)
+    else if(dir == Direction::Left)
     {
         lateral  = -1;
         vertical =  0;
     }
-    else if(key == Qt::Key_Up)
+    else if(dir == Direction::Up)
     {
         lateral  =  0;
         vertical = -1;
     }
-    else if(key == Qt::Key_Down)
+    else if(dir == Direction::Down)
     {
         lateral  =  0;
         vertical =  1;
@@ -191,53 +191,42 @@ QModelIndex SheetModel::jumpIndex(const QModelIndex &current, int key)
         return current;
     }
 
-    qDebug()<<"Jumping "<<lateral<<vertical;
+    //qDebug()<<"Jumping "<<lateral<<vertical;
 
-    bool start_empty = cells.getCell(current.row()+1, current.column()+1).getValue().toString().isEmpty();
+    int row_count = rowCount({});
+    int column_count = columnCount({});
 
-    int step_before = 1;
-    int srow    = current.row()    + 1 + vertical;
-    int scolumn = current.column() + 1 + lateral;
-    qDebug()<<"Step before?"<<srow<<scolumn<<(cells.getCell(srow, scolumn).toString().isEmpty());
-    if(!start_empty && srow <= rowCount({}) && srow >= 1 && scolumn <= columnCount({}) && scolumn >= 1
-       && cells.getCell(srow, scolumn).getValue().toString().isEmpty())
+    bool start_empty = cells.isEmpty(current.row()+1, current.column()+1);
+
+    int row = current.row() + 1 + vertical;
+    int column = current.column() + 1 + lateral;
+
+    if(!start_empty && row <= row_count && row >= 1 && column <= column_count && column >= 1 && cells.isEmpty(row, column))
     {
-        qDebug()<<"Step before!";
         start_empty = true;
-        step_before = 2;
+        row    += vertical;
+        column += lateral;
     }
 
-    int row, column;
-    bool break_outer = false;
-    for(row = current.row() + 1 + vertical * step_before; row <= rowCount({}) && row >= 1; row += vertical)
+    for(; row <= row_count && row >= 1 && column <= column_count && column >= 1; row += vertical, column += lateral)
     {
-        for(column = current.column() + 1 + lateral * step_before; column <= columnCount({}) && column >= 1; column += lateral)
+        bool empty = cells.isEmpty(row, column);
+        if(start_empty && !empty)
         {
-            qDebug()<<"Looking at "<<row<<column;
-            bool empty = cells.getCell(row, column).getValue().toString().isEmpty();
-            //qDebug()<<"Start is"<<(start_empty ? "EMPTY" : "FULL")<<"and I am"<<(empty? "EMPTY" : "FULL");
-            if(start_empty && !empty)
-            {
-                break_outer = true;
-                break;
-            }
-            else if(!start_empty && empty)
-            {
-                row    -= vertical;
-                column -= lateral;
-                break_outer = true;
-                break;
-            }
-
-            if(lateral == 0)break;
+            break;
         }
-        if(vertical == 0 || break_outer)break;
+        else if(!start_empty && empty)
+        {
+            row    -= vertical;
+            column -= lateral;
+            break;
+        }
     }
 
     if(row == 0)++row;
-    else if(row == rowCount({}) + 1)--row;
+    else if(row == row_count + 1)--row;
     if(column == 0)++column;
-    else if(column == columnCount({}) + 1)--column;
+    else if(column == column_count + 1)--column;
 
     qDebug()<<"Got"<<row<<column;
 

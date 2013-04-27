@@ -18,6 +18,8 @@ public:
 
     void init(SheetCell &c);
 
+    bool isEmpty(int row, int column) const;
+
 private:
     SheetModel *model;
 };

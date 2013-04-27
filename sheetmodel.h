@@ -2,6 +2,7 @@
 #define SHEETMODEL_H
 
 #include <QAbstractTableModel>
+#include <QAbstractItemView>
 
 
 #include "sheet.h"
@@ -13,6 +14,15 @@ class SheetModel : public QAbstractTableModel
 
     Q_OBJECT
 public:
+
+    enum class Direction
+    {
+        Up,
+        Down,
+        Left,
+        Right,
+        None
+    };
 
     explicit SheetModel(QObject *parent = 0);
 
@@ -27,7 +37,7 @@ public:
 
     SheetCell &getCell(int row, int column);
 
-    QModelIndex jumpIndex(const QModelIndex &current, int key);
+    QModelIndex jumpIndex(const QModelIndex &current, Direction dir);
 
 protected:
 

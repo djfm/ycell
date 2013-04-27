@@ -80,19 +80,7 @@ void SheetView::supprEditorText()
 
 void SheetView::keyPressEvent(QKeyEvent *event)
 {
-    if((event->modifiers() & Qt::ControlModifier)
-            &&(
-                    event->key() == Qt::Key_Right
-                ||  event->key() == Qt::Key_Left
-                ||  event->key() == Qt::Key_Up
-                ||  event->key() == Qt::Key_Down
-              )
-      )
-    {
-        QModelIndex current = selectionModel()->currentIndex();
-        selectionModel()->setCurrentIndex(qobject_cast<SheetModel*>(model())->jumpIndex(current, event->key()), QItemSelectionModel::ClearAndSelect);
-    }
-    else if(state == State::EditingFormula)
+    if(state == State::EditingFormula)
     {
         if(event->key() == Qt::Key_Escape || event->key() == Qt::Key_Return)
         {
@@ -211,6 +199,42 @@ bool SheetView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger tr
     else return QTableView::edit(index, trigger, event);
 }
 
+QModelIndex SheetView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
+{
+    SheetModel::Direction dir = SheetModel::Direction::None;
+    if(cursorAction == QAbstractItemView::MoveUp)dir = SheetModel::Direction::Up;
+    else if(cursorAction == QAbstractItemView::MoveDown)dir = SheetModel::Direction::Down;
+    else if(cursorAction == QAbstractItemView::MoveLeft)dir = SheetModel::Direction::Left;
+    else if(cursorAction == QAbstractItemView::MoveRight)dir = SheetModel::Direction::Right;
+
+    if( (modifiers & Qt::ControlModifier) && dir != SheetModel::Direction::None )
+    {
+        QModelIndex current = selectionModel()->currentIndex();
+        return qobject_cast<SheetModel*>(model())->jumpIndex(current, dir);
+    }
+
+    return QTableView::moveCursor(cursorAction, modifiers);
+}
+
+QItemSelectionModel::SelectionFlags SheetView::selectionCommand(const QModelIndex &index, const QEvent *event) const
+{
+    if(event->type() == QEvent::KeyPress)
+    {
+        const QKeyEvent *e = static_cast<const QKeyEvent*>(event);
+
+        if(e->modifiers() & Qt::ShiftModifier)
+        {
+            return QItemSelectionModel::SelectCurrent;
+        }
+        else if(e->modifiers() & Qt::ControlModifier)
+        {
+            return QItemSelectionModel::ClearAndSelect;
+        }
+    }
+
+    return QTableView::selectionCommand(index, event);
+}
+
 void SheetView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
     QTableView::selectionChanged(selected, deselected);
@@ -229,7 +253,6 @@ void SheetView::selectionChanged(const QItemSelection &selected, const QItemSele
             const QPersistentModelIndex &bottomRight   = range.bottomRight();
 
             ref = RefSolver::Ref(topLeft.row()+1, topLeft.column()+1, bottomRight.row()+1, bottomRight.column()+1);
-            qDebug()<<"Selected"<<ref.toString();
         }
 
         if(ref.valid())
@@ -273,7 +296,7 @@ void SheetView::selectionChanged(const QItemSelection &selected, const QItemSele
 
 void SheetView::currentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
-
+    scrollTo(current);
 }
 
 void SheetView::on_delegate_editorCreated(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index)
