@@ -29,7 +29,8 @@ public:
     {
         EraseValue   = 0x1,
         EraseFormula = 0x2,
-        EraseFormat  = 0x4
+        EraseFormat  = 0x4,
+        EraseInRange = 0x8
     };
     Q_DECLARE_FLAGS(EraseModes, EraseMode)
 
@@ -49,6 +50,9 @@ public:
     QModelIndex jumpIndex(const QModelIndex &current, Direction dir);
 
     void erase(const QModelIndex &index, const EraseModes &mode);
+    void eraseRange(SheetCell &cell);
+
+    void paste(const QModelIndex &index, const QItemSelection &selection);
 
 public slots:
     void on_this_dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles);

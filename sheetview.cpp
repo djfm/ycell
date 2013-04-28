@@ -246,6 +246,40 @@ QItemSelectionModel::SelectionFlags SheetView::selectionCommand(const QModelInde
     return QTableView::selectionCommand(index, event);
 }
 
+void SheetView::mousePressEvent(QMouseEvent *event)
+{
+    if(event->modifiers() == 0)
+    {
+        QModelIndex index = indexAt(event->pos());
+        QRect  rect = visualRect(index);
+        QPoint vec  = rect.bottomRight() - event->pos();
+        int d = sqrt(vec.x()*vec.x()+vec.y()*vec.y());
+
+        if(d <= 15)
+        {
+            expanding_formula = true;
+            expand_from       = index;
+            qDebug()<<"Started formula expansion!"<<index<<d;
+        }
+    }
+
+
+    return QTableView::mousePressEvent(event);
+}
+
+void SheetView::mouseReleaseEvent(QMouseEvent *event)
+{
+    if(expanding_formula)
+    {
+        expanding_formula = false;
+        qDebug()<<"Ended formula expansion!";
+        SheetModel *sheet = qobject_cast<SheetModel*>(model());
+        sheet->paste(expand_from, selectionModel()->selection());
+    }
+
+    return QTableView::mouseReleaseEvent(event);
+}
+
 void SheetView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
     QTableView::selectionChanged(selected, deselected);

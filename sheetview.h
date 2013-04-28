@@ -28,6 +28,9 @@ protected:
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
     QItemSelectionModel::SelectionFlags selectionCommand(const QModelIndex &index, const QEvent *event) const;
 
+    void mousePressEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+
 private slots:
     void on_delegate_editorCreated(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index);
     void editorTextChanged();
@@ -43,6 +46,8 @@ protected slots:
 private:
 
     bool ignore_editor_text_changed = false;
+    bool expanding_formula = false;
+    QModelIndex expand_from;
     SheetViewDelegate  *delegate;
     QItemEditorFactory *editor_factory;
 

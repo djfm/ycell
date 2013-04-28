@@ -34,6 +34,10 @@ QVariant SheetModel::data(const QModelIndex &index, int role) const
 {
     if(role == Qt::DisplayRole)
     {
+        if(cells.isEmpty(index))
+        {
+            return "";
+        }
         return cells.getCell(index.row() + 1, index.column() + 1).getValue();
     }
     else if(role == Qt::EditRole)
@@ -42,8 +46,22 @@ QVariant SheetModel::data(const QModelIndex &index, int role) const
         if(cell.hasFormula())return cell.getFormula();
         else return cell.getValue();
     }
+    else if(role == Qt::BackgroundRole)
+    {
+        if(cells.isSet(index))
+        {
+            if(cells.getCell(index.row() + 1, index.column() + 1).is_in_range)
+            {
+                return QColor(255,255,204);
+            }
+        }
+    }
     else if(role == Qt::UserRole)
     {
+        if(cells.isEmpty(index))
+        {
+            return SheetCell::DataType::String;
+        }
         return cells.getCell(index.row() + 1, index.column() + 1).getDataType();
     }
 
@@ -58,14 +76,13 @@ bool SheetModel::setData(const QModelIndex &index, const QVariant &value, int ro
         cell.setValue(value);
 
         if(cell.hasFormula())computeCell(cell);
+        else
+        {
+            cell.removeFromParentsChildren();
+            cell.parents.clear();
+        }
 
         emit dataChanged(index, index);
-
-        for(const SheetCell::Ref &c : cell.children)
-        {
-            SheetCell &target = c.model->getCell(c.row, c.column);
-            computeCell(target, true, true);
-        }
 
         return true;
     }
@@ -74,7 +91,7 @@ bool SheetModel::setData(const QModelIndex &index, const QVariant &value, int ro
 
 QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading)
 {
-    qDebug()<<"Computing cell"<<cell.toString()<<"with val"<<cell.getValue();
+    //qDebug()<<"Computing cell"<<cell.toString()<<"with val"<<cell.getValue();
     if(!cell.hasFormula() or !recompute)return cell.getValue();
 
     QString raw_code = cell.getFormula().mid(1);
@@ -94,6 +111,7 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
         else if(r.type == RefSolver::Ref::Type::Range)
         {
             QStringList array;
+            QList<QStringList> rows;
 
             auto callback = [&array, this, cascading, &cell](int row, int column){
                 if(!cascading)cell.addParent({row,column}, this);
@@ -102,18 +120,36 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
 
             if(r.range_type == RefSolver::Ref::RangeType::Rect)
             {
+                /*
                 r.forEachCell(callback);
+                v = SheetCell::toScriptValue(array);*/
+
+                for(int row = r.topLeft.row; row <= r.bottomRight.row; ++row)
+                {
+                    QStringList list;
+                    for(int column = r.topLeft.column; column <= r.bottomRight.column; ++column)
+                    {
+                        if(!cascading)cell.addParent({row,column}, this);
+                        list.push_back(computeCell(cells.getCell(row, column), false).toString());
+                    }
+                    rows.push_back(list);
+                }
+
+                v = SheetCell::toScriptValue(rows);
+
             }
             else if(r.range_type == RefSolver::Ref::RangeType::Row)
             {
                 r.forEachCell(callback, cells.rowCount());
+                v = SheetCell::toScriptValue(array);
             }
             else if(r.range_type == RefSolver::Ref::RangeType::Column)
             {
                 r.forEachCell(callback, cells.columnCount());
+                v = SheetCell::toScriptValue(array);
             }
 
-            v = SheetCell::toScriptValue(array);
+
         }
 
         return v;
@@ -157,13 +193,7 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
 
         if(cell.hasRange())
         {
-            for(int i = 0; i < cell.getRangeRows(); ++i)
-            {
-                for(int j = 0; j < cell.getRangeColumns(); ++j)
-                {
-                    erase(index(cell.getRow()-1+i, cell.getColumn()-1+j), EraseValue);
-                }
-            }
+            eraseRange(cell);
         }
 
         QModelIndex tl = index(cell.getRow()-1, cell.getColumn()-1);
@@ -176,19 +206,21 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
                 {
                     int r = cell.getRow() + i;
                     int c = cell.getColumn() + j;
-                    cells.getCell(r,c).setValue(table.getCell(i,j));
+                    SheetCell &myCell = cells.getCell(r,c);
+                    myCell.setValue(table.getCell(i,j));
+                    myCell.setIsInRange();
                 }
             }
             cell.setHasRange(table.rowCount(), table.columnCount());
+            cell.setIsInRange();
             result = table.getCell(0,0);
             emit dataChanged(tl, br);
         }
         else
         {
             cell.setHasNoRange();
-            result = "#NES(" + QString::number(table.rowCount()) + "x" + QString::number(table.columnCount()) + ")";
+            result = "#NDMRSPC(" + QString::number(table.rowCount()) + "x" + QString::number(table.columnCount()) + ")";
         }
-        qDebug()<<"Table:"<<table.rowCount()<<table.columnCount();
     }
     else
     {
@@ -200,25 +232,15 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
     QModelIndex idx = index(cell.getRow(), cell.getColumn());
     emit dataChanged(idx, idx);
 
-    /*
-    for(const SheetCell::Ref &c : cell.children)
-    {
-        SheetCell &target = c.model->getCell(c.row, c.column);
-        computeCell(target, true, true);
-    }*/
-
-
     return result;
 }
 
 void SheetModel::on_this_dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
-    qDebug()<<"DataChanged!!";
     for(int row = topLeft.row(); row <= bottomRight.row(); ++row)
     {
         for(int column = topLeft.column(); column <= bottomRight.column(); ++column)
         {
-            qDebug()<<"DataChanged"<<row<<column;
             SheetCell &cell = cells.getCell(row+1, column+1);
             for(const SheetCell::Ref &c : cell.children)
             {
@@ -316,7 +338,7 @@ void SheetModel::erase(const QModelIndex &index, const EraseModes &mode)
 {
     if(index.isValid())
     {
-        if(!cells.isEmpty(index))
+        if(cells.isSet(index))
         {
             SheetCell &cell = cells.getCell(index);
             if(mode & EraseValue)
@@ -326,10 +348,63 @@ void SheetModel::erase(const QModelIndex &index, const EraseModes &mode)
             if(mode & EraseFormula)
             {
                 cell.clearFormula();
+                eraseRange(cell);
+                cell.removeFromParentsChildren();
+                cell.parents.clear();
+            }
+            if(mode & EraseInRange)
+            {
+                cell.is_in_range = false;
             }
             emit dataChanged(index, index);
         }
     }
+}
+
+void SheetModel::eraseRange(SheetCell &cell)
+{
+    if(cell.hasRange())
+    {
+        for(int i = 0; i < cell.getRangeRows(); ++i)
+        {
+            for(int j = 0; j < cell.getRangeColumns(); ++j)
+            {
+                erase(index(cell.getRow()-1+i, cell.getColumn()-1+j), EraseValue | EraseInRange);
+            }
+        }
+    }
+}
+
+void SheetModel::paste(const QModelIndex &index, const QItemSelection &selection)
+{
+    SheetCell &from = cells.getCell(index);
+
+    for(const QItemSelectionRange &range : selection)
+    {
+        for(int row = range.topLeft().row(); row <= range.bottomRight().row(); ++row)
+        {
+            for(int column = range.topLeft().column(); column <= range.bottomRight().column(); ++column)
+            {
+                if(row != index.row() || column != index.column())
+                {
+                    SheetCell &to = cells.getCell(row+1, column+1);
+
+                    if(from.hasFormula())
+                    {
+                        qDebug()<<"Pasted formula";
+                        to.setValue(from.translatedFormula(row - index.row(), column - index.column()));
+                        computeCell(to);
+                    }
+                    else
+                    {
+                        to.setValue(from.getValue());
+                    }
+                }
+            }
+        }
+        emit dataChanged(range.topLeft(), range.bottomRight());
+    }
+
 }
 
 QVariant SheetModel::headerData(int section, Qt::Orientation orientation, int role) const

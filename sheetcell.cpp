@@ -3,6 +3,7 @@
 #include <QDebug>
 
 #include "sheetmodel.h"
+#include "refsolver.h"
 
 SheetCell::Ref::Ref(SheetModel *m, int r, int c)
     :model(m), row(r), column(c)
@@ -142,6 +143,22 @@ QString SheetCell::toScriptValue(const QStringList &list)
     return "[" + val + "]";
 }
 
+QString SheetCell::toScriptValue(const QList<QStringList> &list)
+{
+    QString val;
+
+    bool first = true;
+    for(const QStringList &l : list)
+    {
+        if(first)first=false;
+        else val += ", ";
+
+        val.push_back(toScriptValue(l));
+    }
+
+    return "[" + val + "]";
+}
+
 QString SheetCell::toString() const
 {
     return RefSolver::Ref(row,column).toString();
@@ -171,6 +188,11 @@ void SheetCell::setHasNoRange()
     range_columns = 0;
 }
 
+void SheetCell::setIsInRange()
+{
+    is_in_range = true;
+}
+
 int SheetCell::getRangeRows() const
 {
     return range_rows;
@@ -179,6 +201,13 @@ int SheetCell::getRangeRows() const
 int SheetCell::getRangeColumns() const
 {
     return range_columns;
+}
+
+QString SheetCell::translatedFormula(int d_rows, int d_columns) const
+{
+    return RefSolver::forEachRef(formula, [d_rows, d_columns](const RefSolver::Ref &r) -> QString{
+        return r.translate(d_rows, d_columns).toString();
+    });
 }
 
 SheetModel *SheetCell::model()

@@ -120,6 +120,24 @@ QString RefSolver::Ref::toString() const
     return "#REF";
 }
 
+
+RefSolver::Ref::Cell &RefSolver::Ref::Cell::translate(int d_rows, int d_columns)
+{
+    if(!rowFixed)row+=d_rows;
+    if(!columnFixed)column+=d_columns;
+    return *this;
+}
+
+RefSolver::Ref RefSolver::Ref::translate(int d_rows, int d_columns) const
+{
+    Ref res(*this);
+
+    res.topLeft.translate(d_rows, d_columns);
+    res.bottomRight.translate(d_rows, d_columns);
+
+    return res;
+}
+
 QRegExp RefSolver::getRegExp()
 {
     /*QString cxp = "(?:(R(\\d*|\\(-?\\d+\\))C(\\d*|\\(-?\\d+\\)))|(?:((\\$?[A-Z]+)(\\$?\\d+))))";

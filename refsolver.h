@@ -32,6 +32,9 @@ public:
             int column;
             bool rowFixed = false;
             bool columnFixed = false;
+
+            Cell &translate(int d_rows, int d_columns);
+
         };
 
         Ref();
@@ -47,6 +50,8 @@ public:
 
         bool valid() const;
         QString toString() const;
+
+        Ref translate(int d_rows, int d_columns) const;
 
     };
 

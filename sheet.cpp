@@ -47,6 +47,24 @@ bool Sheet::isEmpty(const QModelIndex &index) const
     return isEmpty(index.row()+1, index.column()+1);
 }
 
+bool Sheet::isSet(const QModelIndex &index) const
+{
+    auto r = rows.find(index.row()+1);
+    if(r == rows.end())
+    {
+        return false;
+    }
+    auto c = r->second.find(index.column()+1);
+    if(c == r->second.end())
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
 bool Sheet::isEmpty(const QModelIndex &tl, const QModelIndex &br, const QModelIndexList &except_maybe) const
 {
     for(int row = tl.row(); row <= br.row(); ++row)

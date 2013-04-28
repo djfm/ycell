@@ -22,6 +22,7 @@ public:
 
     bool isEmpty(int row, int column) const;
     bool isEmpty(const QModelIndex &index) const;
+    bool isSet(const QModelIndex &index) const;
     bool isEmpty(const QModelIndex &tl, const QModelIndex &br, const QModelIndexList & except_maybe = {}) const;
 
     using SparseTable<SheetCell>::getCell;

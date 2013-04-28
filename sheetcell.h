@@ -53,6 +53,7 @@ public:
 
     static QString toScriptValue(const QString &val);
     static QString toScriptValue(const QStringList &list);
+    static QString toScriptValue(const QList<QStringList> &list);
 
     QString toString() const;
 
@@ -61,8 +62,11 @@ public:
     bool hasRange() const;
     void setHasRange(int rows, int columns);
     void setHasNoRange();
+    void setIsInRange();
     int getRangeRows() const;
     int getRangeColumns() const;
+
+    QString translatedFormula(int d_rows, int d_columns) const;
 
 private:
 
@@ -72,7 +76,7 @@ private:
     bool has_range = false;
     int range_rows = 0;
     int range_columns = 0;
-
+    bool is_in_range = false;
 
     DataType data_type = String;
     QVariant value = "";
