@@ -54,6 +54,8 @@ public:
 
     void paste(const QModelIndex &index, const QItemSelection &selection);
 
+    Sheet &getSheet();
+
 public slots:
     void on_this_dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles);
 

@@ -18,10 +18,10 @@ public:
     void setLastCursorPosition(int pos);
 
 protected:
-    void keyPressEvent(QKeyEvent *e);
-    void leaveEvent(QEvent *event);
-    void enterEvent(QEvent *event);
-    void focusInEvent(QFocusEvent *e);
+    virtual void keyPressEvent(QKeyEvent *e);
+    virtual void leaveEvent(QEvent *event);
+    virtual void enterEvent(QEvent *event);
+    virtual void focusInEvent(QFocusEvent *e);
 
 signals:
     

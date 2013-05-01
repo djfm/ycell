@@ -25,7 +25,8 @@ SOURCES +=  main.cpp\
     celleditor.cpp \
     refsolver.cpp \
     sheet.cpp \
-    app.cpp
+    app.cpp \
+    topformulaeditor.cpp
 
 HEADERS  += mainwindow.h \
             sheetview.h \
@@ -37,7 +38,8 @@ HEADERS  += mainwindow.h \
     celleditor.h \
     refsolver.h \
     sheet.h \
-    app.h
+    app.h \
+    topformulaeditor.h
 
 FORMS    += mainwindow.ui
 

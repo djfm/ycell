@@ -3,8 +3,10 @@
 
 #include <QTableView>
 #include <QItemEditorFactory>
+#include <QKeyEvent>
 
 #include "sheetviewdelegate.h"
+#include "topformulaeditor.h"
 
 
 class SheetView : public QTableView
@@ -20,6 +22,8 @@ public:
     void insertEditorText(const QString &str);
     void backspaceEditorText();
     void supprEditorText();
+    void setFormulaBarWidget(TopFormulaEditor *ed);
+    void formulaBarKeyPressed(QKeyEvent *e);
 
 protected:
     void keyPressEvent(QKeyEvent *event);
@@ -33,8 +37,9 @@ protected:
 
 private slots:
     void on_delegate_editorCreated(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index);
-    void editorTextChanged();
     void editorSelectionChanged();
+    void editorTextChanged();
+    void formulaBarTextChanged();
 
 
 protected slots:
@@ -45,6 +50,9 @@ protected slots:
 
 private:
 
+    void submitCell();
+
+    TopFormulaEditor *formulaBar = nullptr;
     bool ignore_editor_text_changed = false;
     bool expanding_formula = false;
     QModelIndex expand_from;
@@ -58,6 +66,7 @@ private:
     };
 
     State state = State::Normal;
+    bool editingInTopFormulaBar = false;
 
     QWidget *current_editor = nullptr;
 };

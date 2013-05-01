@@ -91,7 +91,7 @@ bool SheetModel::setData(const QModelIndex &index, const QVariant &value, int ro
 
 QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading)
 {
-    //qDebug()<<"Computing cell"<<cell.toString()<<"with val"<<cell.getValue();
+    qDebug()<<"Computing cell"<<cell.toString()<<"with val"<<cell.getValue();
     if(!cell.hasFormula() or !recompute)return cell.getValue();
 
     QString raw_code = cell.getFormula().mid(1);
@@ -129,7 +129,9 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
                     QStringList list;
                     for(int column = r.topLeft.column; column <= r.bottomRight.column; ++column)
                     {
-                        if(!cascading)cell.addParent({row,column}, this);
+                        RefSolver::Ref ref(row, column);
+                        if(!cascading)cell.addParent(ref, this);
+                        //qDebug()<<"Registering dep from"<<ref.toString()<<"to"<<RefSolver::Ref(cell.row, cell.column).toString();
                         list.push_back(computeCell(cells.getCell(row, column), false).toString());
                     }
                     rows.push_back(list);
@@ -229,7 +231,7 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
     }
 
     cell.setValue(result);
-    QModelIndex idx = index(cell.getRow(), cell.getColumn());
+    QModelIndex idx = index(cell.getRow()-1, cell.getColumn()-1);
     emit dataChanged(idx, idx);
 
     return result;
@@ -405,6 +407,11 @@ void SheetModel::paste(const QModelIndex &index, const QItemSelection &selection
         emit dataChanged(range.topLeft(), range.bottomRight());
     }
 
+}
+
+Sheet &SheetModel::getSheet()
+{
+    return cells;
 }
 
 QVariant SheetModel::headerData(int section, Qt::Orientation orientation, int role) const

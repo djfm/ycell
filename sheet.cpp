@@ -2,6 +2,7 @@
 
 #include "sheetmodel.h"
 
+#include <QDebug>
 
 Sheet::Sheet(SheetModel *m, int r, int c)
     :SparseTable<SheetCell>(r,c)

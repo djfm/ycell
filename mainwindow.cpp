@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 
 #include <QFileDialog>
-
+#include <QDebug>
 
 #include "app.h"
 
@@ -11,9 +11,20 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     setupUi(this);
 
+
+
     current_sheet_model = new SheetModel(this);
-    current_sheet_model->readCSV("/home/fram/Downloads/_1.5.3.1.csv");
+    //current_sheet_model->readCSV("/home/fram/Downloads/_1.5.3.1.csv");
+    formulaBar->setSheet(sheet);
+    sheet->setFormulaBarWidget(formulaBar);
     sheet->setModel(current_sheet_model);
+
+    //qDebug()<<"Splitter:"<<barSplitter->size().height();
+
+    //barSplitter->setSizes({30});
+
+
+
 }
 
 MainWindow::~MainWindow()

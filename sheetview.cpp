@@ -4,6 +4,7 @@
 #include <QKeyEvent>
 #include <QRegExp>
 #include <QItemSelection>
+#include <QCoreApplication>
 
 #include "sheetview.h"
 #include "celleditor.h"
@@ -33,14 +34,22 @@ SheetView::~SheetView()
 
 QString SheetView::getEditorText() const
 {
-    return current_editor->metaObject()->userProperty().read(current_editor).toString();
+    if(editingInTopFormulaBar)return formulaBar->toPlainText();
+    else return current_editor->metaObject()->userProperty().read(current_editor).toString();
 }
 
 void SheetView::setEditorText(const QString &str, bool ignoreChange)
 {
     bool last_ignore_editor_text_changed = ignore_editor_text_changed;
     ignore_editor_text_changed = ignoreChange;
-    current_editor->metaObject()->userProperty().write(current_editor, str);
+    if(editingInTopFormulaBar)
+    {
+        formulaBar->setPlainText(str);
+    }
+    else
+    {
+        current_editor->metaObject()->userProperty().write(current_editor, str);
+    }
     ignore_editor_text_changed = last_ignore_editor_text_changed;
 }
 
@@ -78,17 +87,56 @@ void SheetView::supprEditorText()
     ed->setLastCursorPosition(pos);
 }
 
+void SheetView::setFormulaBarWidget(TopFormulaEditor *ed)
+{
+    formulaBar = ed;
+    connect(formulaBar, SIGNAL(textChanged()), this, SLOT(formulaBarTextChanged()));
+}
+
+void SheetView::formulaBarKeyPressed(QKeyEvent *e)
+{
+    QModelIndex current = currentIndex();
+    if(current != QModelIndex())
+    {
+        if(current_editor == nullptr)
+        {
+            editingInTopFormulaBar = true;
+            QTableView::edit(current);
+
+            CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
+            //QCoreApplication::sendEvent(current_editor, e);
+            formulaBar->setFocus();
+
+            ed->setPlainText(formulaBar->toPlainText());
+
+        }
+        else
+        {
+            if(e->key() == Qt::Key_Return)
+            {
+                editingInTopFormulaBar = false;
+                submitCell();
+            }
+        }
+    }
+}
+
+void SheetView::formulaBarTextChanged()
+{
+    if(current_editor != nullptr && editingInTopFormulaBar)
+    {
+        CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
+        ed->setPlainText(formulaBar->toPlainText());
+    }
+}
+
 void SheetView::keyPressEvent(QKeyEvent *event)
 {
     if(state == State::EditingFormula)
     {
         if(event->key() == Qt::Key_Escape || event->key() == Qt::Key_Return)
         {
-            state = State::Normal;
-
-            current_editor->disconnect(SIGNAL(textChanged()));
-            delegate->commitData(current_editor);
-            closeEditor(current_editor, QAbstractItemDelegate::EndEditHint::NoHint);
+            submitCell();
 
             event->accept();
         }
@@ -284,12 +332,9 @@ void SheetView::selectionChanged(const QItemSelection &selected, const QItemSele
 {
     QTableView::selectionChanged(selected, deselected);
 
-    CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
-
-    RefSolver::Ref ref;
-
     if(state == State::EditingFormula)
     {
+        RefSolver::Ref ref;
         QItemSelection selection = selectionModel()->selection();
         if(selection.count() == 1)
         {
@@ -302,10 +347,15 @@ void SheetView::selectionChanged(const QItemSelection &selected, const QItemSele
 
         if(ref.valid())
         {
+            CellEditor *ed = qobject_cast<CellEditor*>(editingInTopFormulaBar ? formulaBar : current_editor);
+
             QString cell_name = ref.toString();
 
             QString formula = getEditorText();
+
             int pos = ed->getLastCursorPosition();
+            //if(editingInTopFormulaBar)pos =
+
             int ltrim = 0;
             int rtrim = 0;
 
@@ -337,11 +387,44 @@ void SheetView::selectionChanged(const QItemSelection &selected, const QItemSele
             pos = ed->getLastCursorPosition();
         }
     }
+    else
+    {
+
+    }
 }
 
 void SheetView::currentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
     scrollTo(current);
+
+    SheetModel *sheet_model = qobject_cast<SheetModel*>(model());
+    Sheet      &sheet = sheet_model->getSheet();
+
+    if(state != State::EditingFormula && editingInTopFormulaBar)
+    {
+        editingInTopFormulaBar = false;
+        submitCell();
+    }
+
+    if(!editingInTopFormulaBar)
+    {
+        if(sheet.isSet(current))
+        {
+            SheetCell &cell = sheet.getCell(current);
+            if(cell.hasFormula())
+            {
+                formulaBar->setPlainText(cell.getFormula());
+            }
+            else
+            {
+                formulaBar->setPlainText(cell.getValue().toString());
+            }
+        }
+        else
+        {
+            formulaBar->setPlainText("");
+        }
+    }
 }
 
 void SheetView::on_delegate_editorCreated(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index)
@@ -368,6 +451,11 @@ void SheetView::editorTextChanged()
 
     QString text = getEditorText();
 
+    if(formulaBar != nullptr && !editingInTopFormulaBar)
+    {
+        formulaBar->setPlainText(text);
+    }
+
     CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
     int pos = ed->getCursorPosition();
     if(!text.isEmpty() && pos > 0)ed->setLastCursorPosition(pos);
@@ -385,7 +473,7 @@ void SheetView::editorSelectionChanged()
 
 void SheetView::closeEditor(QWidget *editor, QAbstractItemDelegate::EndEditHint hint)
 {
-    bool reallyClose = state != State::EditingFormula;
+    bool reallyClose = state != State::EditingFormula && !editingInTopFormulaBar;
 
     if(reallyClose)
     {
@@ -401,4 +489,12 @@ void SheetView::closeEditor(QWidget *editor, QAbstractItemDelegate::EndEditHint 
 
     }
 
+}
+
+void SheetView::submitCell()
+{
+    state = State::Normal;
+    current_editor->disconnect(SIGNAL(textChanged()));
+    delegate->commitData(current_editor);
+    closeEditor(current_editor, QAbstractItemDelegate::EndEditHint::NoHint);
 }
