@@ -3,13 +3,16 @@
 #include <QKeyEvent>
 #include <QDebug>
 
+#include "sheetview.h"
 #include "sheetviewdelegate.h"
 #include "sheetcell.h"
 #include "celleditor.h"
 
-SheetViewDelegate::SheetViewDelegate(QObject *parent) :
-    QStyledItemDelegate(parent)
+SheetViewDelegate::SheetViewDelegate(SheetView *parent) :
+    QStyledItemDelegate(parent),
+    sheet(parent)
 {
+
 }
 
 bool SheetViewDelegate::eventFilter(QObject *object, QEvent *event)
@@ -57,5 +60,8 @@ void SheetViewDelegate::setEditorData(QWidget *editor, const QModelIndex &index)
 
 void SheetViewDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const
 {
-    QStyledItemDelegate::setModelData(editor, model, index);
+    if(sheet->getState() != SheetView::State::EditingFormula)
+    {
+        QStyledItemDelegate::setModelData(editor, model, index);
+    }
 }

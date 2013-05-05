@@ -17,13 +17,6 @@ SheetView::SheetView(QWidget *parent) :
     delegate = new SheetViewDelegate(this);
     delegate->setObjectName("delegate");
 
-    /*
-    editor_factory = new QItemEditorFactory;
-    QItemEditorCreatorBase *cellEditor = new QStandardItemEditorCreator<CellEditor>();
-    editor_factory->registerEditor(QVariant::String, cellEditor);
-    editor_factory->registerEditor(QVariant::, cellEditor);
-    delegate->setItemEditorFactory(editor_factory);*/
-
     setItemDelegate(delegate);
     QMetaObject::connectSlotsByName(this);
 }
@@ -55,7 +48,7 @@ void SheetView::setEditorText(const QString &str, bool ignoreChange)
 
 void SheetView::insertEditorText(const QString &str)
 {
-    CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
+    CellEditor *ed = qobject_cast<CellEditor*>(editingInTopFormulaBar ? formulaBar : current_editor);
     QString text = ed->toPlainText();
     int pos = ed->getLastCursorPosition();
     text.insert(pos, str);
@@ -66,7 +59,7 @@ void SheetView::insertEditorText(const QString &str)
 
 void SheetView::backspaceEditorText()
 {
-    CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
+    CellEditor *ed = qobject_cast<CellEditor*>(editingInTopFormulaBar ? formulaBar : current_editor);
     QString text = ed->toPlainText();
     int pos = ed->getLastCursorPosition();
     if(pos == 0 || text.isEmpty())return;
@@ -78,7 +71,7 @@ void SheetView::backspaceEditorText()
 
 void SheetView::supprEditorText()
 {
-    CellEditor *ed = qobject_cast<CellEditor*>(current_editor);
+    CellEditor *ed = qobject_cast<CellEditor*>(editingInTopFormulaBar ? formulaBar : current_editor);
     QString text = ed->toPlainText();
     int pos = ed->getLastCursorPosition();
     if(pos == text.length())return;
@@ -91,6 +84,7 @@ void SheetView::setFormulaBarWidget(TopFormulaEditor *ed)
 {
     formulaBar = ed;
     connect(formulaBar, SIGNAL(textChanged()), this, SLOT(formulaBarTextChanged()));
+    connect(formulaBar, SIGNAL(clicked()), this, SLOT(formulaBarClicked()));
 }
 
 void SheetView::formulaBarKeyPressed(QKeyEvent *e)
@@ -100,6 +94,7 @@ void SheetView::formulaBarKeyPressed(QKeyEvent *e)
     {
         if(current_editor == nullptr)
         {
+            int pos = formulaBar->getCursorPosition();
             editingInTopFormulaBar = true;
             QTableView::edit(current);
 
@@ -108,17 +103,23 @@ void SheetView::formulaBarKeyPressed(QKeyEvent *e)
             formulaBar->setFocus();
 
             ed->setPlainText(formulaBar->toPlainText());
-
+            formulaBar->setCursorPosition(pos);
         }
         else
         {
             if(e->key() == Qt::Key_Return)
             {
+                qDebug()<<"Submitting from topBar!";
                 editingInTopFormulaBar = false;
                 submitCell();
             }
         }
     }
+}
+
+SheetView::State SheetView::getState() const
+{
+    return state;
 }
 
 void SheetView::formulaBarTextChanged()
@@ -130,12 +131,23 @@ void SheetView::formulaBarTextChanged()
     }
 }
 
+void SheetView::formulaBarClicked()
+{
+    qDebug()<<"topBarClicked";
+    if(!editingInTopFormulaBar)
+    {
+        qDebug()<<"editingInTopFormulaBar";
+        editingInTopFormulaBar = true;
+    }
+}
+
 void SheetView::keyPressEvent(QKeyEvent *event)
 {
     if(state == State::EditingFormula)
     {
         if(event->key() == Qt::Key_Escape || event->key() == Qt::Key_Return)
         {
+            editingInTopFormulaBar = false;
             submitCell();
 
             event->accept();
@@ -231,6 +243,7 @@ void SheetView::keyPressEvent(QKeyEvent *event)
                     }
                 }
             }
+            formulaBar->setPlainText("");
         }
         else
         {
@@ -311,7 +324,6 @@ void SheetView::mousePressEvent(QMouseEvent *event)
         }
     }
 
-
     return QTableView::mousePressEvent(event);
 }
 
@@ -354,7 +366,6 @@ void SheetView::selectionChanged(const QItemSelection &selected, const QItemSele
             QString formula = getEditorText();
 
             int pos = ed->getLastCursorPosition();
-            //if(editingInTopFormulaBar)pos =
 
             int ltrim = 0;
             int rtrim = 0;
@@ -442,6 +453,7 @@ void SheetView::on_delegate_editorCreated(QWidget *editor, const QStyleOptionVie
     }
     current_editor = editor;
     connect(current_editor, SIGNAL(textChanged()), this, SLOT(editorTextChanged()));
+    connect(current_editor, SIGNAL(clicked()), this, SLOT(editorClicked()));
     connect(current_editor, SIGNAL(selectionChanged()), this, SLOT(editorSelectionChanged()));
 }
 
@@ -463,6 +475,15 @@ void SheetView::editorTextChanged()
     if(!text.isEmpty() && text.at(0) == '=' && state != State::EditingFormula)
     {
         state = State::EditingFormula;
+    }
+}
+
+void SheetView::editorClicked()
+{
+    if(editingInTopFormulaBar)
+    {
+        qDebug()<<"Editing normally.";
+        editingInTopFormulaBar = false;
     }
 }
 

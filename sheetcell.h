@@ -26,6 +26,8 @@ public:
         Ref(SheetModel *m, int r, int c);
 
         bool operator==(const Ref &other) const;
+
+        RefSolver::Ref toRef() const;
     };
 
 
@@ -49,7 +51,9 @@ public:
     void setSheet(Sheet *tbl);
 
     void removeFromParentsChildren();
-    void addParent(const RefSolver::Ref &, SheetModel *sheet);
+    QSet<Ref> getAncestors();
+    void getAncestors(QSet<Ref> &found);
+    bool addParent(const RefSolver::Ref &, SheetModel *sheet);
 
     static QString toScriptValue(const QString &val);
     static QString toScriptValue(const QStringList &list);

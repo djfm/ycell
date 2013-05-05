@@ -3,6 +3,8 @@
 
 #include <QStyledItemDelegate>
 
+class SheetView;
+
 class SheetViewDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
@@ -10,7 +12,7 @@ class SheetViewDelegate : public QStyledItemDelegate
     QModelIndex current_index;
 
 public:
-    explicit SheetViewDelegate(QObject *parent = 0);
+    explicit SheetViewDelegate(SheetView *parent = 0);
 
     bool eventFilter(QObject *object, QEvent *event);
     QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const;
@@ -28,6 +30,8 @@ signals:
 public slots:
     
 private:
+
+    SheetView *sheet = nullptr;
 
 public:
 

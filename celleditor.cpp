@@ -73,3 +73,9 @@ void CellEditor::focusInEvent(QFocusEvent *e)
     restoreLastCursorPosition();
     QTextEdit::focusInEvent(e);
 }
+
+void CellEditor::mousePressEvent(QMouseEvent *e)
+{
+    QTextEdit::mousePressEvent(e);
+    emit clicked();
+}

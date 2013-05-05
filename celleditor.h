@@ -22,8 +22,11 @@ protected:
     virtual void leaveEvent(QEvent *event);
     virtual void enterEvent(QEvent *event);
     virtual void focusInEvent(QFocusEvent *e);
+    virtual void mousePressEvent(QMouseEvent *e);
 
 signals:
+
+    void clicked() const;
     
 public slots:
 

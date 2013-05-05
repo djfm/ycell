@@ -91,7 +91,7 @@ bool SheetModel::setData(const QModelIndex &index, const QVariant &value, int ro
 
 QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading)
 {
-    qDebug()<<"Computing cell"<<cell.toString()<<"with val"<<cell.getValue();
+    qDebug()<<"Computing cell"<<cell.toString()<<(recompute ? "" : "(Using Cache)");//<<"with val"<<cell.getValue();
     if(!cell.hasFormula() or !recompute)return cell.getValue();
 
     QString raw_code = cell.getFormula().mid(1);
@@ -99,56 +99,90 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
 
     if(!cascading)cell.removeFromParentsChildren();
 
-    code = RefSolver::forEachRef(raw_code, [this, &cell, cascading](const RefSolver::Ref &r) -> QString {
+    bool error = false;
+    QString error_string = "";
+
+    code = RefSolver::forEachRef(raw_code, [this, &cell, &error, &error_string, cascading](const RefSolver::Ref &r) -> QString {
         QString v = "#NIY";
 
         if(r.type == RefSolver::Ref::Type::SingleCell)
         {
-            if(!cascading)cell.addParent(r, this);
-            SheetCell &cell = cells.getCell(r.topLeft.row, r.topLeft.column);
-            v = SheetCell::toScriptValue(computeCell(cell, false).toString());
+            if(!cascading)
+            {
+                if(!cell.addParent(r, this))
+                {
+                    error = true;
+                    error_string = "#CRCREF";
+                }
+            }
+            if(!error)
+            {
+                SheetCell &cell = cells.getCell(r.topLeft.row, r.topLeft.column);
+                v = SheetCell::toScriptValue(computeCell(cell, false).toString());
+            }
         }
         else if(r.type == RefSolver::Ref::Type::Range)
         {
             QStringList array;
             QList<QStringList> rows;
 
-            auto callback = [&array, this, cascading, &cell](int row, int column){
-                if(!cascading)cell.addParent({row,column}, this);
+            auto callback = [&array, this, cascading, &cell, &error, &error_string](int row, int column){
+                if(!cascading)
+                {
+                    if(!cell.addParent({row,column}, this))
+                    {
+                        error = true;
+                        error_string = "#CRCREF";
+                    }
+                }
                 array.push_back(computeCell(cells.getCell(row, column), false).toString());
             };
 
             if(r.range_type == RefSolver::Ref::RangeType::Rect)
             {
-                /*
-                r.forEachCell(callback);
-                v = SheetCell::toScriptValue(array);*/
-
                 for(int row = r.topLeft.row; row <= r.bottomRight.row; ++row)
                 {
                     QStringList list;
                     for(int column = r.topLeft.column; column <= r.bottomRight.column; ++column)
                     {
                         RefSolver::Ref ref(row, column);
-                        if(!cascading)cell.addParent(ref, this);
+                        if(!cascading)
+                        {
+                            if(!cell.addParent(ref, this))
+                            {
+                                error = true;
+                                error_string = "#CRCREF";
+                                row = r.bottomRight.row + 1; //break outer loop
+                                break;
+                            }
+                        }
                         //qDebug()<<"Registering dep from"<<ref.toString()<<"to"<<RefSolver::Ref(cell.row, cell.column).toString();
                         list.push_back(computeCell(cells.getCell(row, column), false).toString());
                     }
                     rows.push_back(list);
                 }
 
-                v = SheetCell::toScriptValue(rows);
+                if(!error)
+                {
+                    v = SheetCell::toScriptValue(rows);
+                }
 
             }
             else if(r.range_type == RefSolver::Ref::RangeType::Row)
             {
                 r.forEachCell(callback, cells.rowCount());
-                v = SheetCell::toScriptValue(array);
+                if(!error)
+                {
+                    v = SheetCell::toScriptValue(array);
+                }
             }
             else if(r.range_type == RefSolver::Ref::RangeType::Column)
             {
                 r.forEachCell(callback, cells.columnCount());
-                v = SheetCell::toScriptValue(array);
+                if(!error)
+                {
+                    v = SheetCell::toScriptValue(array);
+                }
             }
 
 
@@ -157,77 +191,117 @@ QVariant SheetModel::computeCell(SheetCell &cell, bool recompute, bool cascading
         return v;
     });
 
-    qDebug()<<"Source code:"<<raw_code<<" Precompiled code:"<<code;
+    //qDebug()<<"Source code:"<<raw_code<<" Precompiled code:"<<code;
 
     QScriptValue val = App::getJs().evaluate(code);
     QVariant result;
 
-    if(val.isNumber())
+    if(!error)
     {
-        result = val.toNumber();
-        cell.setHasNoRange();
-    }
-    else if(val.isString())
-    {
-        result = val.toString();
-        cell.setHasNoRange();
-    }
-    else if(val.isArray())
-    {
-        SparseTable<QString> table;
-        int length = val.property("length").toInteger();
-        for(int i = 0; i < length; ++i)
+        if(val.isNumber())
         {
-            if(val.property(i).isArray())
+            result = val.toNumber();
+            cell.setHasNoRange();
+        }
+        else if(val.isString())
+        {
+            result = val.toString();
+            cell.setHasNoRange();
+        }
+        else if(val.isArray())
+        {
+            SparseTable<QString> table;
+            int length = val.property("length").toInteger();
+            for(int i = 0; i < length; ++i)
             {
-                int l = val.property(i).property("length").toInteger();
-                for(int j = 0; j < l; ++j)
+                if(val.property(i).isArray())
                 {
-                    table.getCell(i,j) = val.property(i).property(j).toString();
+                    int l = val.property(i).property("length").toInteger();
+                    for(int j = 0; j < l; ++j)
+                    {
+                        table.getCell(i,j) = val.property(i).property(j).toString();
+                    }
+                }
+                else
+                {
+                    QString v = val.property(i).toString();
+                    table.getCell(i,0) = v;
+                }
+            }
+
+            if(cell.hasRange())
+            {
+                eraseRange(cell);
+            }
+
+            QModelIndex tl = index(cell.getRow()-1, cell.getColumn()-1);
+            QModelIndex br = index(cell.getRow()-1 + table.rowCount()-1, cell.getColumn()-1 + table.columnCount()-1);
+
+            QSet<SheetCell::Ref> ancestors = cell.getAncestors();
+            QList<SheetCell*> modified;
+
+            if(cells.isEmpty(tl,br,{tl}))
+            {
+                for(int i = 0; i < table.rowCount(); ++i)
+                {
+                    for(int j = 0; j < table.columnCount(); ++j)
+                    {
+                        int r = cell.getRow() + i;
+                        int c = cell.getColumn() + j;
+
+                        SheetCell::Ref target = {this, r, c};
+
+                        if(ancestors.contains(target))
+                        {
+                            //qDebug()<<target.toRef().toString()<<" is in the ancestors of "<<cell.toString();
+
+                            error = true;
+                            error_string = "#CRCREF";
+                            i = table.rowCount() + 1; //break outer loop
+                            break;
+                        }
+                        else
+                        {
+                            SheetCell &myCell = cells.getCell(r,c);
+                            myCell.setValue(table.getCell(i,j));
+                            myCell.setIsInRange();
+                            modified.push_back(&myCell);
+                        }
+                    }
+                }
+                if(!error)
+                {
+                    cell.setHasRange(table.rowCount(), table.columnCount());
+                    cell.setIsInRange();
+                    result = table.getCell(0,0);
+                    emit dataChanged(tl, br);
+                }
+                else
+                {
+                    for(SheetCell *c : modified)
+                    {
+                        c->setValue("");
+                        c->setHasNoRange();
+                    }
+                    cell.setHasNoRange();
+                    result = error_string;
                 }
             }
             else
             {
-                QString v = val.property(i).toString();
-                table.getCell(i,0) = v;
+                cell.setHasNoRange();
+                result = "#NDMRSPC(" + QString::number(table.rowCount()) + "x" + QString::number(table.columnCount()) + ")";
             }
-        }
-
-        if(cell.hasRange())
-        {
-            eraseRange(cell);
-        }
-
-        QModelIndex tl = index(cell.getRow()-1, cell.getColumn()-1);
-        QModelIndex br = index(cell.getRow()-1 + table.rowCount()-1, cell.getColumn()-1 + table.columnCount()-1);
-        if(cells.isEmpty(tl,br,{tl}))
-        {
-            for(int i = 0; i < table.rowCount(); ++i)
-            {
-                for(int j = 0; j < table.columnCount(); ++j)
-                {
-                    int r = cell.getRow() + i;
-                    int c = cell.getColumn() + j;
-                    SheetCell &myCell = cells.getCell(r,c);
-                    myCell.setValue(table.getCell(i,j));
-                    myCell.setIsInRange();
-                }
-            }
-            cell.setHasRange(table.rowCount(), table.columnCount());
-            cell.setIsInRange();
-            result = table.getCell(0,0);
-            emit dataChanged(tl, br);
         }
         else
         {
             cell.setHasNoRange();
-            result = "#NDMRSPC(" + QString::number(table.rowCount()) + "x" + QString::number(table.columnCount()) + ")";
+            result = "#OOPS";
         }
     }
     else
     {
-        cell.setHasNoRange();
-        result = "#OOPS";
+        result = error_string;
     }
 
     cell.setValue(result);

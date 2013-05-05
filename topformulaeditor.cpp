@@ -35,3 +35,9 @@ void TopFormulaEditor::focusOutEvent(QFocusEvent *e)
 {
     QTextEdit::focusOutEvent(e);
 }
+
+void TopFormulaEditor::mousePressEvent(QMouseEvent *e)
+{
+    QTextEdit::mousePressEvent(e);
+    emit clicked();
+}

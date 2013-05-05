@@ -14,6 +14,13 @@ class SheetView : public QTableView
     Q_OBJECT
     
 public:
+
+    enum class State
+    {
+        Normal,
+        EditingFormula
+    };
+
     explicit SheetView(QWidget *parent = 0);
     ~SheetView();
 
@@ -24,6 +31,8 @@ public:
     void supprEditorText();
     void setFormulaBarWidget(TopFormulaEditor *ed);
     void formulaBarKeyPressed(QKeyEvent *e);
+
+    State getState() const;
 
 protected:
     void keyPressEvent(QKeyEvent *event);
@@ -39,8 +48,9 @@ private slots:
     void on_delegate_editorCreated(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index);
     void editorSelectionChanged();
     void editorTextChanged();
+    void editorClicked();
     void formulaBarTextChanged();
-
+    void formulaBarClicked();
 
 protected slots:
     void selectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
@@ -58,12 +68,6 @@ private:
     QModelIndex expand_from;
     SheetViewDelegate  *delegate;
     QItemEditorFactory *editor_factory;
-
-    enum class State
-    {
-        Normal,
-        EditingFormula
-    };
 
     State state = State::Normal;
     bool editingInTopFormulaBar = false;

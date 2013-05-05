@@ -15,6 +15,11 @@ bool SheetCell::Ref::operator ==(const SheetCell::Ref &other) const
     return other.model == model && other.row == row && other.column == column;
 }
 
+RefSolver::Ref SheetCell::Ref::toRef() const
+{
+    return RefSolver::Ref(row, column);
+}
+
 SheetCell &SheetCell::setValue(const QVariant &val)
 {
     //qDebug()<<"Setting value for "<<toString()<<":"<<val;
@@ -103,11 +108,53 @@ void SheetCell::removeFromParentsChildren()
     parents.clear();
 }
 
-void SheetCell::addParent(const RefSolver::Ref &r, SheetModel *sheet)
+QSet<SheetCell::Ref> SheetCell::getAncestors()
 {
+    QSet<Ref> found;
+    //found.insert({model(), row, column});
+    getAncestors(found);
+    return found;
+}
+
+void SheetCell::getAncestors(QSet<SheetCell::Ref> &found)
+{
+    //qDebug()<<"Looking for parents of "<<Ref(model(), row, column).toRef().toString();
+    for(const SheetCell::Ref &r : parents)
+    {
+        //qDebug()<<"..."<<r.toRef().toString();
+        if(!found.contains(r))
+        {
+            found.insert(r);
+            r.model->getCell(r.row, r.column).getAncestors(found);
+        }
+    }
+}
+
+bool SheetCell::addParent(const RefSolver::Ref &r, SheetModel *sheet)
+{
+    Ref me(model(), row, column);
     Ref ref(sheet, r.topLeft.row, r.topLeft.column);
-    parents.insert(ref);
-    sheet->getCell(ref.row, ref.column).children.insert(Ref(model(), row, column));
+
+    QSet<Ref> ancestors = sheet->getCell(r.topLeft.row, r.topLeft.column).getAncestors();
+
+    /*
+    qDebug()<<me.toRef().toString()<<" has ancestors:";
+    for(auto r:ancestors)
+    {
+        qDebug()<<r.toRef().toString();
+    }*/
+
+    if(!ancestors.contains(me))
+    {
+        qDebug()<<me.toRef().toString()<<" <-- "<<r.toString();
+        parents.insert(ref);
+        sheet->getCell(ref.row, ref.column).children.insert(me);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 QString SheetCell::toScriptValue(const QString &val)

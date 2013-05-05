@@ -19,6 +19,7 @@ protected:
 
     void keyPressEvent(QKeyEvent *e);
     void focusOutEvent(QFocusEvent *e);
+    void mousePressEvent(QMouseEvent *e);
 
 signals:
     
